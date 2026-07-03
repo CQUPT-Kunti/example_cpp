@@ -1,0 +1,49 @@
+#include "ThreadPool.h"
+
+ThreadPool::ThreadPool(size_t threadCount) : stop(false)
+{
+    for (size_t i = 0; i < threadCount; i++)
+    {
+        workers.emplace_back([this]
+                             {
+            while(true){
+                std::function<void()> task;
+                {
+                    std::unique_lock<std::mutex> lock(this->mutex);
+                    this->condition.wait(lock,!stop||!this->tasks.empty());
+
+                    if(this->stop&&this->tasks.empty())
+                        return;
+
+                    task = std::move(this->tasks.front());
+                    this->tasks.pop();
+                }
+                task();
+            } });
+    }
+}
+
+ThreadPool::~ThreadPool()
+{
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        stop = true;
+    }
+
+    condition.notify_all();
+
+    for (std::thread &worker : workers)
+    {
+        if (worker.joinable())
+            worker.join();
+    }
+}
+
+void ThreadPool::enqueue(std::function<void()> task)
+{
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        tasks.emplace(std::move(task));
+    }
+    condition.notify_one();
+}

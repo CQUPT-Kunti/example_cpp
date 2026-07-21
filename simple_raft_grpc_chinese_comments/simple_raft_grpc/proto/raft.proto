@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package simple_raft.rpc;
+
+// Raft 节点间通信及演示管理接口。
+// RequestVote、AppendEntries 是 Raft 核心 RPC；其余三个接口用于本示例的观测和手工演示。
+service RaftService {
+  // 候选人请求其他节点投票。
+  rpc RequestVote(VoteRequest) returns (VoteResponse);
+
+  // Leader 复制日志，或在 entries 为空时传播 leader_commit（也可扩展为心跳）。
+  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+
+  // 演示接口：读取节点角色、任期、日志位点和提交进度。
+  rpc GetStatus(StatusRequest) returns (StatusResponse);
+
+  // 演示接口：手动触发一次选举。生产系统通常由 election timeout 自动触发。
+  rpc StartElection(StartElectionRequest) returns (StartElectionResponse);
+
+  // 演示接口：提交一条 key=value 命令。只有 Leader 能在多数派确认后提交成功。
+  rpc Propose(CommandRequest) returns (CommandResponse);
+}
+
+// 一条 Raft 日志。index 与 term 一起决定日志在集群中的一致性位置。
+message LogEntry {
+  uint64 index = 1;   // 日志序号，从 1 开始。
+  uint64 term = 2;    // 创建该日志的 Leader 任期。
+  string command = 3; // 教学状态机使用 key=value 格式。
+}
+
+// RequestVote 请求：候选人必须携带自己的末尾日志信息，供接收方执行日志新旧比较。
+message VoteRequest {
+  uint64 term = 1;
+  string candidate_id = 2;
+  uint64 last_log_index = 3;
+  uint64 last_log_term = 4;
+}
+
+// RequestVote 响应：term 可使旧候选人发现更高任期并主动降级。
+message VoteResponse {
+  uint64 term = 1;
+  bool vote_granted = 2;
+}
+
+// AppendEntries 请求：prev_log_index/prev_log_term 是前序日志锚点，entries 是待复制批次。
+message AppendEntriesRequest {
+  uint64 term = 1;
+  string leader_id = 2;
+  uint64 prev_log_index = 3;
+  uint64 prev_log_term = 4;
+  uint64 leader_commit = 5;
+  repeated LogEntry entries = 6;
+}
+
+// AppendEntries 响应：success 表示是否匹配并成功追加；match_index 表示对端的日志进度。
+message AppendEntriesResponse {
+  uint64 term = 1;
+  bool success = 2;
+  uint64 match_index = 3;
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+  string node_id = 1;
+  string role = 2;
+  uint64 current_term = 3;
+  string leader_id = 4;
+  uint64 last_log_index = 5;
+  uint64 commit_index = 6;
+  uint64 last_applied = 7;
+}
+
+message StartElectionRequest {}
+
+message StartElectionResponse {
+  uint64 term = 1;
+  bool became_leader = 2;
+  uint64 votes_received = 3;
+  string role = 4;
+}
+
+message CommandRequest {
+  string command = 1;
+}
+
+message CommandResponse {
+  bool accepted = 1;
+  string message = 2;
+  uint64 log_index = 3;
+  uint64 commit_index = 4;
+}

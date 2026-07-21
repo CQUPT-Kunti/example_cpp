@@ -5,6 +5,7 @@
 #include <thread>
 #include <queue>
 #include <condition_variable>
+#include <future>
 
 class ThreadPool
 {
@@ -13,7 +14,9 @@ public:
     ~ThreadPool();
 
     // 加入任务
-    void enqueue(std::function<void()> task);
+    template <typename F, typename... Args>
+    auto enqueue(F &&f, Args &&...args)
+        -> std::future<typename std::result_of<F(Args...)>::type>;
 
 private:
     std::queue<std::function<void()>> tasks; // 任务队列

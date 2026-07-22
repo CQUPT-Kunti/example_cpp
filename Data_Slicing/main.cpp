@@ -1,4 +1,4 @@
-#include "FileSlicer.h"
+#include "ChunkManager.h"
 
 #include <filesystem>
 #include <iostream>
@@ -18,8 +18,8 @@ int main()
             continue;
         }
 
-        FileSlicer slicer({chunkSize, outputDir.string()});
-        if (!slicer.slice(entry.path().string(), outputDir.string()))
+        ChunkManager manager({chunkSize, outputDir.string()});
+        if (!manager.slice(entry.path().string(), outputDir.string()))
         {
             std::cerr << "slice failed: " << entry.path() << '\n';
             return 1;
@@ -27,7 +27,7 @@ int main()
 
         std::cout << "file: " << entry.path().filename().string() << '\n';
         std::cout << "chunk size: " << chunkSize << " bytes\n";
-        std::cout << "chunks: " << slicer.getChunks().size() << '\n';
+        std::cout << "chunks: " << manager.getChunks().size() << '\n';
     }
 
     return 0;

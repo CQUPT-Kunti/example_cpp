@@ -8,4 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(data_slicing
     main.cpp
     FileSlicer.cpp
+    TaskQueue.cpp
+    ReaderWorker.cpp
+    WriterWorker.cpp
+    ChunkManager.cpp
 )

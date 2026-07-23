@@ -1,15 +1,15 @@
 #include "WriterWorker.h"
 
-#include "FileSlicer.h"
-
 #include <memory>
 
 WriterWorker::WriterWorker(
     std::shared_ptr<TaskQueue> writerQueue,
     std::shared_ptr<BufferPool> bufferPool,
+    std::shared_ptr<WriteStatistics> statistics,
     std::shared_ptr<std::atomic_bool> ok)
     : writerQueue_(std::move(writerQueue)),
       bufferPool_(std::move(bufferPool)),
+      statistics_(std::move(statistics)),
       ok_(std::move(ok))
 {
 }
@@ -39,15 +39,19 @@ void WriterWorker::run()
             continue;
         }
 
-        FileWriter writer;
-        if (!writer.open(task->outputPath) ||
-            !writer.write(task->buffer->data(), task->chunk.size))
+        if (!writer_.open(task->outputPath) ||
+            !writer_.write(task->buffer->data(), task->chunk.size))
         {
             *ok_ = false;
         }
-
-        writer.close();
+        statistics_->addBytes(task->chunk.size);
+        writer_.close();
         bufferPool_->release(task->buffer);
         task->buffer.reset();
     }
+}
+
+void WriterWorker::flush()
+{
+    writer_.flush();
 }

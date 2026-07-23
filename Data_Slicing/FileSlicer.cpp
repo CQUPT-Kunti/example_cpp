@@ -1,6 +1,7 @@
-#include "FileSlicer.h"
 #include <algorithm>
 #include <iostream>
+
+#include "FileSlicer.h"
 
 bool FileReader::open(const std::string &filePath)
 {
@@ -55,36 +56,6 @@ bool FileReader::is_open() const
 std::uint64_t FileReader::size() const
 {
     return fileSize;
-}
-
-bool FileWriter::open(const ::std::string &filePath)
-{
-    output_.open(filePath, std::ios::binary);
-    return output_.is_open();
-}
-
-void FileWriter::close()
-{
-    if (output_.is_open())
-    {
-        output_.close();
-    }
-}
-
-bool FileWriter::write(const char *buffer, std::uint64_t size)
-{
-    if (!output_.is_open())
-    {
-        return false;
-    }
-
-    output_.write(buffer, size);
-    return !output_.fail();
-}
-
-bool FileWriter::is_open() const
-{
-    return output_.is_open();
 }
 
 FileSlicer::FileSlicer(const SlicerConfig &config)

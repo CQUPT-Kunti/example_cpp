@@ -9,6 +9,7 @@ add_executable(data_slicing
     main.cpp
     Buffer.cpp
     BufferPool.cpp
+    FileWriter.cpp
     FileSlicer.cpp
     TaskQueue.cpp
     ReaderWorker.cpp

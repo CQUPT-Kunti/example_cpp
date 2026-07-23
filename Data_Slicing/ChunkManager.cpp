@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 
 ChunkManager::ChunkManager(const SlicerConfig &config)
@@ -37,13 +38,14 @@ bool ChunkManager::slice(const std::string &filename, const std::string &output_
     auto readerQueue = std::make_shared<TaskQueue>();
     auto writerQueue = std::make_shared<TaskQueue>();
     auto ok = std::make_shared<std::atomic_bool>(true);
+    statistics_ = std::make_shared<WriteStatistics>();
     bufferPool_ = std::make_shared<BufferPool>(
         kReaderCount + kWriterCount,
         static_cast<std::size_t>(config_.chunkSize));
 
     for (std::size_t i = 0; i < kWriterCount; ++i)
     {
-        auto worker = std::make_shared<WriterWorker>(writerQueue, bufferPool_, ok);
+        auto worker = std::make_shared<WriterWorker>(writerQueue, bufferPool_, statistics_, ok);
         worker->start();
         writerWorkers_.push_back(worker);
     }
@@ -54,6 +56,9 @@ bool ChunkManager::slice(const std::string &filename, const std::string &output_
         worker->start();
         readerWorkers_.push_back(worker);
     }
+
+    flush_running_.store(true);
+    flush_work_ = std::thread(&ChunkManager::flushLoop, this);
 
     for (std::uint64_t offset = 0; offset < fileSize; offset += config_.chunkSize)
     {
@@ -83,10 +88,43 @@ bool ChunkManager::slice(const std::string &filename, const std::string &output_
         worker->join();
     }
 
+    flush_running_.store(false);
+    statistics_->addBytes(0);
+    if (flush_work_.joinable())
+    {
+        flush_work_.join();
+    }
+
+    for (const auto &worker : writerWorkers_)
+    {
+        worker->flush();
+    }
+    statistics_->reset();
+
     return ok->load();
 }
-
-const std::vector<FileChunk> &ChunkManager::getChunks() const
+而这一行只由 ChunkManager::flushLo const std::vector<FileChunk> &ChunkManager::getChunks() const
 {
     return chunks_;
+}
+
+void ChunkManager::flushLoop()
+{
+    constexpr std::uint64_t kFlushBytes = 1024ULL * 1024 * 1024;
+
+    while (flush_running_.load())
+    {
+        statistics_->waitFlush(kFlushBytes, std::chrono::seconds(5));
+
+        if (!flush_running_.load())
+        {
+            break;
+        }
+
+        for (const auto &worker : writerWorkers_)
+        {
+            worker->flush();
+        }
+        statistics_->reset();
+    }
 }

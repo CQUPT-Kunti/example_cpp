@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <fstream>
 #include <string>
 #include <vector>
-#include <fstream>
+
+#include "FileWriter.h"
 
 // 切片信息
 struct FileChunk
@@ -46,24 +48,6 @@ public:
     std::uint64_t read(char *buffer, std::uint64_t size);
 
     std::uint64_t size() const;
-
-    bool is_open() const;
-};
-
-class FileWriter
-{
-private:
-    std::ofstream output_;
-
-public:
-    FileWriter() = default;
-    ~FileWriter() = default;
-
-    bool open(const std::string &filePath);
-
-    void close();
-
-    bool write(const char *buffer, std::uint64_t size);
 
     bool is_open() const;
 };

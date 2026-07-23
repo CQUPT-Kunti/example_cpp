@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BufferPool.h"
 #include "FileSlicer.h"
 #include "ReaderWorker.h"
 #include "WriterWorker.h"
@@ -13,6 +14,7 @@ class ChunkManager
 private:
     SlicerConfig config_;
     std::vector<FileChunk> chunks_;
+    std::shared_ptr<BufferPool> bufferPool_;
     std::vector<std::shared_ptr<ReaderWorker>> readerWorkers_;
     std::vector<std::shared_ptr<WriterWorker>> writerWorkers_;
 

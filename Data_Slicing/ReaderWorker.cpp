@@ -7,9 +7,11 @@
 ReaderWorker::ReaderWorker(
     std::shared_ptr<TaskQueue> readerQueue,
     std::shared_ptr<TaskQueue> writerQueue,
+    std::shared_ptr<BufferPool> bufferPool,
     std::shared_ptr<std::atomic_bool> ok)
     : readerQueue_(std::move(readerQueue)),
       writerQueue_(std::move(writerQueue)),
+      bufferPool_(std::move(bufferPool)),
       ok_(std::move(ok))
 {
 }
@@ -32,6 +34,8 @@ void ReaderWorker::run()
     std::shared_ptr<ChunkTask> task;
     while (readerQueue_->pop(task))
     {
+        task->buffer = bufferPool_->acquire();
+
         FileReader reader;
         if (!reader.open(task->sourcePath))
         {
@@ -41,9 +45,8 @@ void ReaderWorker::run()
             continue;
         }
 
-        task->buffer.resize(task->chunk.size);
         if (!reader.seek(task->chunk.offset) ||
-            reader.read(task->buffer.data(), task->chunk.size) != task->chunk.size)
+            reader.read(task->buffer->data(), task->chunk.size) != task->chunk.size)
         {
             task->ok = false;
             *ok_ = false;

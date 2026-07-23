@@ -13,6 +13,9 @@ ChunkManager::ChunkManager(const SlicerConfig &config)
 
 bool ChunkManager::slice(const std::string &filename, const std::string &output_dir)
 {
+    constexpr std::size_t kReaderCount = 4;
+    constexpr std::size_t kWriterCount = 2;
+
     if (config_.chunkSize == 0)
     {
         return false;
@@ -34,17 +37,20 @@ bool ChunkManager::slice(const std::string &filename, const std::string &output_
     auto readerQueue = std::make_shared<TaskQueue>();
     auto writerQueue = std::make_shared<TaskQueue>();
     auto ok = std::make_shared<std::atomic_bool>(true);
+    bufferPool_ = std::make_shared<BufferPool>(
+        kReaderCount + kWriterCount,
+        static_cast<std::size_t>(config_.chunkSize));
 
-    for (int i = 0; i < 2; ++i)
+    for (std::size_t i = 0; i < kWriterCount; ++i)
     {
-        auto worker = std::make_shared<WriterWorker>(writerQueue, ok);
+        auto worker = std::make_shared<WriterWorker>(writerQueue, bufferPool_, ok);
         worker->start();
         writerWorkers_.push_back(worker);
     }
 
-    for (int i = 0; i < 4; ++i)
+    for (std::size_t i = 0; i < kReaderCount; ++i)
     {
-        auto worker = std::make_shared<ReaderWorker>(readerQueue, writerQueue, ok);
+        auto worker = std::make_shared<ReaderWorker>(readerQueue, writerQueue, bufferPool_, ok);
         worker->start();
         readerWorkers_.push_back(worker);
     }

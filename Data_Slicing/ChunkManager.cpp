@@ -89,7 +89,6 @@ bool ChunkManager::slice(const std::string &filename, const std::string &output_
     }
 
     flush_running_.store(false);
-    statistics_->addBytes(0);
     if (flush_work_.joinable())
     {
         flush_work_.join();
@@ -103,7 +102,8 @@ bool ChunkManager::slice(const std::string &filename, const std::string &output_
 
     return ok->load();
 }
-而这一行只由 ChunkManager::flushLo const std::vector<FileChunk> &ChunkManager::getChunks() const
+
+const std::vector<FileChunk> &ChunkManager::getChunks() const
 {
     return chunks_;
 }
